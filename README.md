@@ -31,3 +31,17 @@ Devices need static IPs (DHCP reservation) — there is no discovery.
 
 `python test_dreamscreen.py` (needs `pip install crc8`) — verifies state parsing
 and command packet/CRC building without Home Assistant.
+
+## Device notes (measured on a SideKick, firmware Side2Side revE)
+
+* The SideKick is an ESP8266. In setup mode it is an access point, `192.168.4.1`.
+* It serves the stock Arduino OTA form at `http://192.168.4.1/firmware`, HTTP basic
+  auth `admin` / `DSadmin714` (credentials are hardcoded in the DreamScreen app).
+* **OTA is capped at ~128 KB.** Free sketch space is the total sketch area minus the
+  293 KB running sketch, so uploads abort at exactly 130825 bytes — the stock image
+  itself is too big to re-flash, and DreamScreen's own `Sidekick_WLED_0.11.1.bin`
+  (649 KB) cannot be installed this way. Converting one to WLED needs serial access.
+  A failed OTA is harmless: the ESP8266 stages the new image in free flash and only
+  swaps it in on success.
+* `0x01 0x11` ("Stop ESP Drivers") does not lift the cap.
+* Firmware images and protocol docs: https://github.com/d8ahazard/DreamscreenDocs

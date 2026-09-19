@@ -51,11 +51,19 @@ def join(ssid, password, ip=AP_IP, timeout=45):
         time.sleep(delay)
     sender.close()
 
+    # 0x0114 = credentials received, 0x010D = joined the network. Only the
+    # second one means success; the device sends the first either way.
     deadline = time.time() + timeout
     try:
         while time.time() < deadline:
             message, (addr, _) = listener.recvfrom(1024)
-            if len(message) > 5 and message[4] == 0x01 and message[5] == 0x0D:
+            if len(message) < 6 or message[0] != 0xFC:
+                continue
+            command = (message[4], message[5])
+            print("  device replied {:02X}{:02X}{}".format(
+                command[0], command[1],
+                " (credentials received)" if command == (0x01, 0x14) else ""))
+            if command == (0x01, 0x0D):
                 return addr
     except socket.timeout:
         pass
@@ -76,5 +84,6 @@ if __name__ == "__main__":
     if result:
         print("SideKick confirmed, it joined your wifi.")
     else:
-        print("No confirmation. Check you are on the SideKick's wifi, that the "
-              "network is 2.4 GHz, and the password is right.")
+        print("Not joined. If you only saw 0114, the device got the credentials "
+              "but could not connect - almost always a wrong password. The "
+              "network must also be 2.4 GHz and WPA2, not WPA3.")

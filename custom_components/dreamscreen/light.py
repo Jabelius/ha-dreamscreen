@@ -13,6 +13,7 @@ from homeassistant.components.light import (
     LightEntityFeature,
 )
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_TIMEOUT
+from homeassistant.exceptions import PlatformNotReady
 import homeassistant.helpers.config_validation as cv
 
 from .pydreamscreen import get_device, get_state
@@ -55,8 +56,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     state = get_state(ip=host, timeout=timeout)
     if not state:
-        _LOGGER.error("No DreamScreen device answered at %s", host)
-        return
+        # Let Home Assistant retry instead of losing the light until a restart.
+        raise PlatformNotReady("No DreamScreen device answered at {}".format(host))
     device = get_device(state)
     if device is None:
         _LOGGER.error("Unsupported DreamScreen device at %s: %s", host, state)

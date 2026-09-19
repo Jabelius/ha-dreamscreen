@@ -4,7 +4,10 @@ import logging
 import re
 import socket
 import sys
+import threading
 import time
+
+from contextlib import closing
 
 from typing import cast, Union, Dict, List, Generator, Optional
 
@@ -13,6 +16,11 @@ import crc8  # type: ignore
 from .network import get_broadcasts
 
 _LOGGER = logging.getLogger(__name__)
+
+# Devices always answer to port 8888, whatever port the request came from, so
+# every listener has to bind that one port. Two of them at once means one
+# socket swallows the other's reply, so state reads are serialised.
+_STATE_LOCK = threading.Lock()
 
 if "--debug" in sys.argv:
     logging.basicConfig(level=logging.DEBUG)
@@ -651,9 +659,10 @@ def get_state(
         ip: str, timeout: float = 1.0
 ) -> Union[None, Dict[str, Union[str, int, bytes, datetime.datetime]]]:
     """State message generator for a specific device."""
-    for state in get_states(ip=ip, timeout=timeout):
-        if state["ip"] == ip:
-            return state
+    with _STATE_LOCK, closing(get_states(ip=ip, timeout=timeout)) as states:
+        for state in states:
+            if state["ip"] == ip:
+                return state
     _LOGGER.error("couldn't get_state of %s", ip)
     return None
 

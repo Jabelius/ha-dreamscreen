@@ -56,3 +56,12 @@ verified against real hardware:
   looked absent.
 * A SideKick carries no zone fields, so ambient colour is at payload index 35-37
   (not 40-42) and ambient scene at index 60 (not 62).
+
+## Multiple devices
+
+Devices always reply to UDP port 8888 regardless of the source port, so every
+listener must bind that one port. Two devices polling at once meant one socket
+swallowed the other's reply and that light went missing, so state reads are
+serialised behind a lock. A device that does not answer during startup now
+raises `PlatformNotReady`, so Home Assistant retries instead of dropping the
+light until the next restart.

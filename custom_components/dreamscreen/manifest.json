@@ -1,0 +1,10 @@
+{
+  "domain": "dreamscreen",
+  "name": "DreamScreen",
+  "documentation": "https://github.com/GregoryDosh/pydreamscreen",
+  "codeowners": [],
+  "dependencies": [],
+  "requirements": ["crc8>=0.0.4"],
+  "iot_class": "local_polling",
+  "version": "2026.9.1"
+}

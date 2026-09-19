@@ -70,7 +70,10 @@ class _ReceiveStateMessages:
 
     def __iter__(self):
         """Iteration over network messages."""
-        pattern = re.compile(b"\xfc[\x90-\xFF]\xff`\x01\n")
+        # Vendored fix: upstream required the length byte to be 0x90-0xFF,
+        # which silently dropped every SideKick reply (its state message is
+        # 0x43 bytes long).
+        pattern = re.compile(b"\xfc[\x00-\xff]\xff`\x01\n", re.DOTALL)
         try:
             _LOGGER.debug("Listening...")
             while True:
@@ -102,6 +105,9 @@ class _ReceiveStateMessages:
             message: bytes, ip: str
     ) -> Union[None, Dict[str, Union[str, int, bytes, datetime.datetime]]]:
         """Take a packet payload and convert to dictionary."""
+        if len(message) < 63:
+            _LOGGER.debug("state message too short: %d bytes", len(message))
+            return None
         if message[-2] == 1:
             device_type = "DreamScreenHD"
         elif message[-2] == 2:
@@ -120,6 +126,11 @@ class _ReceiveStateMessages:
             "recent_state_message": message,
         }  # type: Dict[str, Union[str, int, bytes, datetime.datetime]]
 
+        # The SideKick state message carries no zone fields, so everything after
+        # brightness sits five bytes earlier than on the HD/4K. Verified against
+        # a real SideKick: ambient colour reads back at 35-37, not 40-42.
+        color_at, scene_at = (35, 60) if device_type == "SideKick" else (40, 62)
+
         parsed_message.update(
             {
                 "name": _ReceiveStateMessages.parse_string(message[0:16]),
@@ -127,8 +138,8 @@ class _ReceiveStateMessages:
                 "group_number": message[32],
                 "mode": message[33],
                 "brightness": message[34],
-                "ambient_color": message[40:43],
-                "ambient_scene": message[62],
+                "ambient_color": message[color_at:color_at + 3],
+                "ambient_scene": message[scene_at],
             }
         )
         _LOGGER.debug("Update: %s", parsed_message)

@@ -45,3 +45,14 @@ and command packet/CRC building without Home Assistant.
   swaps it in on success.
 * `0x01 0x11` ("Stop ESP Drivers") does not lift the cap.
 * Firmware images and protocol docs: https://github.com/d8ahazard/DreamscreenDocs
+
+## SideKick state layout
+
+The upstream library never actually worked with a SideKick. Two fixes here, both
+verified against real hardware:
+
+* Its state message is 63 bytes, but upstream only accepted replies whose length
+  byte was `0x90-0xFF`, so every SideKick reply was discarded and the device
+  looked absent.
+* A SideKick carries no zone fields, so ambient colour is at payload index 35-37
+  (not 40-42) and ambient scene at index 60 (not 62).
